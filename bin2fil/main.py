@@ -1,3 +1,6 @@
+import os
+import struct
+
 import numpy as np
 
 # por ahora haré que el filename sea escrito por el usuario, considerar implementar un walk quizá
@@ -36,3 +39,36 @@ def bin2cpow(data, off=0, d_type=1, channels=32):
 # hay que hacer un bucle que itere sobre los datos, no sé si un while con un contador o un for sobre el tamaño
 # del archivo. De todas maneras sería usando información del archivo usando os, no leyendo el elemento entero
 # (por el bien de la memoria y mi consciencia)
+def write_header(file):
+    outfile = str(file).rstrip(".bin") + ".fil"
+    with open(outfile, "wb") as fil:
+        fil.write(struct.pack("<I", 12))
+        fil.write(bytearray("HEADER_START", "ascii"))
+
+        fil.write(struct.pack("<I", 9))
+        fil.write(bytearray("data_type", "ascii"))
+        fil.write(struct.pack("<I", 1))
+
+        fil.write(struct.pack("<I", 4))
+        fil.write(bytearray("nifs", "ascii"))
+        fil.write(struct.pack("<I", 1))
+
+        fil.write(struct.pack("<I", 12))
+        fil.write(bytearray("telescope_id", "ascii"))
+        fil.write(struct.pack("<I", 0))  # 0 es el valor para datos artificiales
+
+        fil.write(struct.pack("<I", 5))
+        fil.write(bytearray("nbits", "ascii"))
+        fil.write(
+            struct.pack("<I", nbits)
+        )  # número de bits por muestra 8 para la rtl y 16 para la airspy
+
+        fil.write(struct.pack("<I", 4))
+        fil.write(bytearray("foff", "ascii"))
+        fil.write(struct.pack("<d", channel_w))  # ancho de cada canal
+
+        fil.write(struct.pack("<I", 4))
+        fil.write(bytearray("fch1", "ascii"))  # frecuencia central del primer canal
+        fil.write(struct.pack("<d", freq_ch1))
+
+        # fil.write()
