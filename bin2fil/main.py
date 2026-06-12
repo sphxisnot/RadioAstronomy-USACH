@@ -47,7 +47,7 @@ def write_header(file):
 
         fil.write(struct.pack("<I", 9))
         fil.write(bytearray("data_type", "ascii"))
-        fil.write(struct.pack("<I", 1))
+        fil.write(struct.pack("<I", 1))  # tipo de dato, 1 es filterbank
 
         fil.write(struct.pack("<I", 4))
         fil.write(bytearray("nifs", "ascii"))
@@ -71,4 +71,30 @@ def write_header(file):
         fil.write(bytearray("fch1", "ascii"))  # frecuencia central del primer canal
         fil.write(struct.pack("<d", freq_ch1))
 
-        # fil.write()
+        fil.write(struct.pack("<I", 6))
+        fil.write(bytearray("nchans", "ascii"))
+        fil.write(struct.pack("<I", channels))  # cantidad de canales de freq
+
+        fil.write(struct.pack("<I", 5))
+        fil.write(bytearray("tsamp", "ascii"))
+        fil.write(struct.pack("<d", tsample))  # tiempo entre muestras
+
+        fil.write(struct.pack("<I", 6))
+        fil.write(bytearray("tstart", "ascii"))
+        fil.write(struct.pack("<d", time_mjd))  # tiempo de inicio de la medición
+
+        fil.write(struct.pack("<I", 11))
+        fil.write(bytearray("source_name", "ascii"))
+        fil.write(struct.pack("<I", len(source_name)))
+        fil.write(bytearray(source_name, "ascii"))
+
+        fil.write(struct.pack("<I", 7))
+        fil.write(bytearray("src_raj", "ascii"))
+        fil.write(struct.pack("<d", source_ra))
+
+        fil.write(struct.pack("<I", 7))
+        fil.write(bytearray("src_dej", "ascii"))
+        fil.write(struct.pack("<d", source_dec))
+
+        fil.write(struct.pack("<I", 10))
+        fil.write(bytearray("HEADER_END", "ascii"))
