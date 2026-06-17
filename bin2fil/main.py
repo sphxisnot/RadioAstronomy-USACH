@@ -9,6 +9,10 @@ bin_file = input("Escribir nombre del archivo .bin a convertir:\n")
 # añadir inferencia de tipo más adelante?
 print("Elija una SDR:\n[1] RTL (8-bit unsigned int)\n[2] Airspy (16-bit signed int)")
 sdr_type = int(input("Ponga 1 o 2:"))
+sample_rate = 2.048e6
+filesize = os.path.getsize(bin_file)
+obs_len_secs = filesize / (2 * channels * sample_rate)
+time_mjd = (os.path.getmtime(bin_file) / 864000) + 40587 - obs_len_secs / 864000
 
 
 # definición de funciones, hecho por modularidad y porque nos hará la vida un poco más facil si es que pasamos a C
@@ -32,13 +36,31 @@ def bin2cpow(data, off=0, d_type=1, channels=32):
     )  # lectura de los datos, el separador es "empty" solo por precaución para que asuma binario, no sé si es
     # realmente necesario, quizá hacer offset un multiplicador a channel en vez de un número independiente
     freq_data = np.fft.fft(samples)  # transformada de Fourier
-    channel_pow = freq_data.real**2 + freq_data.imag**2  # conversión a poder de canal
+    channel_pow = np.abs(freq_data) ** 2  # conversión a poder de canal
     return channel_pow
 
 
-# hay que hacer un bucle que itere sobre los datos, no sé si un while con un contador o un for sobre el tamaño
-# del archivo. De todas maneras sería usando información del archivo usando os, no leyendo el elemento entero
-# (por el bien de la memoria y mi consciencia)
+def freq_transformation(file, chunksize):
+    samples = filesize / (
+        2 * channels
+    )  # la cantidad de muestras contenidas en el archivo
+    chunks = np.floor(
+        samples / chunksize
+    )  # la cantidad de trozos en los que dividiremos el proceso
+    overflow_chunk_size = samples - chunks * chunksize  # el trozo sobrante
+    for chunk in range(
+        chunks + 1
+    ):  # iteramos en todos los trozos (el +1 es para incluir el sobrante)
+        freq_data = np.empty([20, channels])
+        offset = 1  # tengo que cambiar esto
+        for power in range(20):
+            freq_data[power, :] = bin2cpow(file, off=offset * power, channels=channels)
+        freq = freq_data.sum(axis=0)  # suma los 20 power samples
+        # falta continuar el bucle
+        # en este momento no se me occure bien sobre qué tengo que iterar y cuantas veces, pero no es complicado
+    return freq
+
+
 def write_header(file):
     outfile = str(file).rstrip(".bin") + ".fil"
     with open(outfile, "wb") as fil:
@@ -60,7 +82,7 @@ def write_header(file):
         fil.write(struct.pack("<I", 5))
         fil.write(bytearray("nbits", "ascii"))
         fil.write(
-            struct.pack("<I", nbits)
+            struct.pack("<I", int(8 * sdr_type))
         )  # número de bits por muestra 8 para la rtl y 16 para la airspy
 
         fil.write(struct.pack("<I", 4))
