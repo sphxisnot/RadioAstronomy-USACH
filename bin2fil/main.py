@@ -120,3 +120,54 @@ def write_header(file):
 
         fil.write(struct.pack("<I", 10))
         fil.write(bytearray("HEADER_END", "ascii"))
+
+
+
+def paso3(data, off, d_type=1, channels=32): # hay que cambiar el nombre de las funciones por algo creativo
+    """
+    .
+
+    Args:
+        data (str o pathObject): Nombre o path del archivo binario conteniendo la señal.
+        off (int): Desfase o posición en el archivo, necesario para los bucles.
+        d_type (int): 1 o 2. Tipo de dato contenido en el archivo binario, uint8 por defecto.
+        channels (int): Cantidad de canales, idealmente una potencia de 2.
+    Returns:
+        sum_powers (array-like): Array con la suma de 20 espectros.
+        new_off (int): Nuevo desfase o posición en el archivo, necesario para los bucles.
+    """
+
+    bytes_per_cycle = channels*2 * d_type ###hay que tener ojo aqui por si en algun futuro se cambia d_type por otra cosa que no sea 1, 2
+    new_off = off
+
+    sum_powers = np.zeros(channels, dtype=np.float64) #mal nombre, variable para acumular las potencias en el ciclo
+
+    for _ in range(20):#numero arbitrario que aparece en las notas tecnicas de HawkRAO
+        power = bin2cpow(data=data, off=new_off, d_type=d_type, channels=channels)
+        sum_powers += power
+        new_off += bytes_per_cycle
+    return sum_powers, new_off
+
+def paso4(data, outfile, d_type=1, channels=32):
+    """ 
+    .
+
+    Args:
+        data (str o pathObject): Nombre o path del archivo binario conteniendo la señal.
+        outfile (str o pathObject): Nombre o path del archivo filterbank de salida.
+        d_type (int): 1 o 2. Tipo de dato contenido en el archivo binario, uint8 por defecto.
+        channels (int): Cantidad de canales, idealmente una potencia de 2.
+    """
+    bytes_per_cycle = channels*2 * d_type
+    bytes_per_piece = bytes_per_cycle*20 #numero de bytes por cada vez que se usa paso3()
+
+    file_length = os.path.getsize(data)
+    total_pieces = file_length // bytes_per_piece #numero de trozos(?), para el ultimo ciclo que recorre todo el archivo
+
+    offset = 0
+
+    with open(outfile, "ab") as fil:
+        for piece in range(total_pieces):
+            sum_powers, new_off = paso3(data=data, off=offset, d_type=d_type, channels=channels) #solo se usa la función paso3()
+            offset = new_off
+            sum_powers.astype(np.float32).tofile(fil)
