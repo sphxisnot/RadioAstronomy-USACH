@@ -2,6 +2,7 @@ import os
 import struct
 
 import numpy as np
+from sampling_qol import ObsParameter, Source
 
 # por ahora haré que el filename sea escrito por el usuario, considerar implementar un walk quizá
 bin_file = input("Escribir nombre del archivo .bin a convertir:\n")
@@ -35,7 +36,7 @@ def bin2cpow(data, off=0, d_type=1, channels=32):
         data, dtype=data_type[d_type], sep="", count=channels * 2, offset=off
     )  # lectura de los datos, el separador es "empty" solo por precaución para que asuma binario, no sé si es
     # realmente necesario, quizá hacer offset un multiplicador a channel en vez de un número independiente
-    freq_data = np.fft.fft(samples)  # transformada de Fourier
+    freq_data = np.fft.fft(samples.astype(np.float64))  # transformada de Fourier
     channel_pow = np.abs(freq_data) ** 2  # conversión a poder de canal
     return channel_pow
 
@@ -122,8 +123,9 @@ def write_header(file):
         fil.write(bytearray("HEADER_END", "ascii"))
 
 
-
-def paso3(data, off, d_type=1, channels=32): # hay que cambiar el nombre de las funciones por algo creativo
+def sum_cpowers(
+    data, off, d_type=1, channels=32
+):  # hay que cambiar el nombre de las funciones por algo creativo
     """
     .
 
@@ -137,19 +139,26 @@ def paso3(data, off, d_type=1, channels=32): # hay que cambiar el nombre de las 
         new_off (int): Nuevo desfase o posición en el archivo, necesario para los bucles.
     """
 
-    bytes_per_cycle = channels*2 * d_type ###hay que tener ojo aqui por si en algun futuro se cambia d_type por otra cosa que no sea 1, 2
+    bytes_per_cycle = (
+        channels * 2 * d_type
+    )  ###hay que tener ojo aqui por si en algun futuro se cambia d_type por otra cosa que no sea 1, 2
     new_off = off
 
-    sum_powers = np.zeros(channels, dtype=np.float64) #mal nombre, variable para acumular las potencias en el ciclo
+    sum_powers = np.zeros(
+        channels, dtype=np.float64
+    )  # mal nombre, variable para acumular las potencias en el ciclo
 
-    for _ in range(20):#numero arbitrario que aparece en las notas tecnicas de HawkRAO
+    for _ in range(
+        20
+    ):  # numero arbitrario que aparece en las notas tecnicas de HawkRAO
         power = bin2cpow(data=data, off=new_off, d_type=d_type, channels=channels)
         sum_powers += power
         new_off += bytes_per_cycle
     return sum_powers, new_off
 
-def paso4(data, outfile, d_type=1, channels=32):
-    """ 
+
+def file_runthrough(data, outfile, d_type=1, channels=32):
+    """
     .
 
     Args:
@@ -158,16 +167,22 @@ def paso4(data, outfile, d_type=1, channels=32):
         d_type (int): 1 o 2. Tipo de dato contenido en el archivo binario, uint8 por defecto.
         channels (int): Cantidad de canales, idealmente una potencia de 2.
     """
-    bytes_per_cycle = channels*2 * d_type
-    bytes_per_piece = bytes_per_cycle*20 #numero de bytes por cada vez que se usa paso3()
+    bytes_per_cycle = channels * 2 * d_type
+    bytes_per_piece = (
+        bytes_per_cycle * 20
+    )  # numero de bytes por cada vez que se usa paso3()
 
     file_length = os.path.getsize(data)
-    total_pieces = file_length // bytes_per_piece #numero de trozos(?), para el ultimo ciclo que recorre todo el archivo
+    total_pieces = (
+        file_length // bytes_per_piece
+    )  # numero de trozos(?), para el ultimo ciclo que recorre todo el archivo
 
     offset = 0
 
     with open(outfile, "ab") as fil:
         for piece in range(total_pieces):
-            sum_powers, new_off = paso3(data=data, off=offset, d_type=d_type, channels=channels) #solo se usa la función paso3()
+            sum_powers, new_off = sum_cpowers(
+                data=data, off=offset, d_type=d_type, channels=channels
+            )  # solo se usa la función paso3()
             offset = new_off
             sum_powers.astype(np.float32).tofile(fil)
