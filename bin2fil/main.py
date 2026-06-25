@@ -4,16 +4,13 @@ import struct
 import numpy as np
 from sampling_qol import ObsParameter, Source
 
-# por ahora haré que el filename sea escrito por el usuario, considerar implementar un walk quizá
-bin_file = input("Escribir nombre del archivo .bin a convertir:\n")
 # sanitizar input si es que se conserva esto (improbable si es que pasamos a C)
 # añadir inferencia de tipo más adelante?
 print("Elija una SDR:\n[1] RTL (8-bit unsigned int)\n[2] Airspy (16-bit signed int)")
 sdr_type = int(input("Ponga 1 o 2:"))
-sample_rate = 2.048e6
-filesize = os.path.getsize(bin_file)
-obs_len_secs = filesize / (2 * channels * sample_rate)
-time_mjd = (os.path.getmtime(bin_file) / 864000) + 40587 - obs_len_secs / 864000
+# filesize = os.path.getsize(bin_file)
+# obs_len_secs = filesize / (2 * channels * sample_rate)
+# time_mjd = (os.path.getmtime(bin_file) / 864000) + 40587 - obs_len_secs / 864000
 
 
 # definición de funciones, hecho por modularidad y porque nos hará la vida un poco más facil si es que pasamos a C
@@ -62,8 +59,11 @@ def freq_transformation(file, chunksize):
     return freq
 
 
-def write_header(file):
-    outfile = str(file).rstrip(".bin") + ".fil"
+def write_header(obsparams: ObsParameter):
+    file = (
+        str(obsparams.file).removesuffix(".iq").removesuffix(".bin")
+    )  # me di cuenta que tengo que chequear si es bin o iq
+    outfile = file + ".fil"
     with open(outfile, "wb") as fil:
         fil.write(struct.pack("<I", 12))
         fil.write(bytearray("HEADER_START", "ascii"))
@@ -88,36 +88,38 @@ def write_header(file):
 
         fil.write(struct.pack("<I", 4))
         fil.write(bytearray("foff", "ascii"))
-        fil.write(struct.pack("<d", channel_w))  # ancho de cada canal
+        fil.write(struct.pack("<d", obsparams.channel_width))  # ancho de cada canal
 
         fil.write(struct.pack("<I", 4))
         fil.write(bytearray("fch1", "ascii"))  # frecuencia central del primer canal
-        fil.write(struct.pack("<d", freq_ch1))
+        fil.write(struct.pack("<d", obsparams.fch1))
 
         fil.write(struct.pack("<I", 6))
         fil.write(bytearray("nchans", "ascii"))
-        fil.write(struct.pack("<I", channels))  # cantidad de canales de freq
+        fil.write(struct.pack("<I", obsparams.channels))  # cantidad de canales de freq
 
         fil.write(struct.pack("<I", 5))
         fil.write(bytearray("tsamp", "ascii"))
-        fil.write(struct.pack("<d", tsample))  # tiempo entre muestras
+        fil.write(struct.pack("<d", obsparams.tsample))  # tiempo entre muestras
 
         fil.write(struct.pack("<I", 6))
         fil.write(bytearray("tstart", "ascii"))
-        fil.write(struct.pack("<d", time_mjd))  # tiempo de inicio de la medición
+        fil.write(
+            struct.pack("<d", obsparams.obstime)
+        )  # tiempo de inicio de la medición
 
         fil.write(struct.pack("<I", 11))
         fil.write(bytearray("source_name", "ascii"))
-        fil.write(struct.pack("<I", len(source_name)))
-        fil.write(bytearray(source_name, "ascii"))
+        fil.write(struct.pack("<I", len(obsparams.source)))
+        fil.write(bytearray(obsparams.source, "ascii"))
 
         fil.write(struct.pack("<I", 7))
         fil.write(bytearray("src_raj", "ascii"))
-        fil.write(struct.pack("<d", source_ra))
+        fil.write(struct.pack("<d", obsparams.ra))
 
         fil.write(struct.pack("<I", 7))
         fil.write(bytearray("src_dej", "ascii"))
-        fil.write(struct.pack("<d", source_dec))
+        fil.write(struct.pack("<d", obsparams.dec))
 
         fil.write(struct.pack("<I", 10))
         fil.write(bytearray("HEADER_END", "ascii"))
@@ -186,3 +188,21 @@ def file_runthrough(data, outfile, d_type=1, channels=32):
             )  # solo se usa la función paso3()
             offset = new_off
             sum_powers.astype(np.float32).tofile(fil)
+
+
+# datos para prueba
+vela_pulsar = Source(
+    "J0835–4510", 083520.6, -451034.8
+)  # creamos el objeto porque solo andamos mirando vela
+
+# pequeña sección de tiempo porque estoy 60% seguro que la fecha de modificación de
+# los archivos de drive será cuando los descargué, así que lo estoy haciendo a mano con el historial de drive
+# y un poco de inferencia
+from astropy.time import Time
+
+mjd1 = Time("2024-05-04 12:30").mjd[0]
+tst_fold04 = ObsParameter(2.048e6, mjd1, 400, vela_pulsar, "tstFold04.bin", 1)
+tst_fold04.set_channels(32)
+tst_fold04.header_data()
+write_header(tst_fold04)
+file_runthrough(tst_fold04.file, "tst_fold04.fil")

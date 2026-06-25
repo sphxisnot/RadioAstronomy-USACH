@@ -1,5 +1,4 @@
 import os
-from pydoc import doc
 
 
 class Source(object):
@@ -10,13 +9,24 @@ class Source(object):
 
 
 class ObsParameter(object):
-    def __init__(self, sample_rate, obstime, center_frequency, source: Source):
+    def __init__(
+        self,
+        sample_rate: float,
+        obstime: float,
+        center_frequency: float,
+        source: Source,
+        rawfile: str,
+        sdr: int,
+    ):
         self.sample_rate = sample_rate
         self.obstime = obstime
         self.source = source.name
         self.ra = source.ra
         self.dec = source.dec
         self.cfreq = center_frequency
+        self.tsample = 1 / self.sample_rate
+        self.file = rawfile
+        self.sdr = sdr
 
     def set_channels(self, channels):
         self.channels = channels
@@ -32,3 +42,7 @@ class ObsParameter(object):
             print(
                 "No se ha especificado la cantidad de canales, defínala e intente de nuevo."
             )
+
+
+def take_samples():
+    pass
