@@ -30,7 +30,7 @@ def bin2cpow(data, off=0, d_type=1, channels=32):
     """
     data_type = {1: np.uint8, 2: np.int16}  # tipo de dato dependiendo de la sdr
     samples = np.fromfile(
-        data, dtype=data_type[d_type], sep="", count=channels * 2, offset=off
+        data, dtype=data_type[d_type], sep="", count=channels, offset=off
     )  # lectura de los datos, el separador es "empty" solo por precaución para que asuma binario, no sé si es
     # realmente necesario, quizá hacer offset un multiplicador a channel en vez de un número independiente
     freq_data = np.fft.fft(samples.astype(np.float64))  # transformada de Fourier
@@ -92,7 +92,7 @@ def write_header(obsparams: ObsParameter):
 
         fil.write(struct.pack("<I", 4))
         fil.write(bytearray("fch1", "ascii"))  # frecuencia central del primer canal
-        fil.write(struct.pack("<d", obsparams.fch1))
+        fil.write(struct.pack("<d", obsparams.cfreq))
 
         fil.write(struct.pack("<I", 6))
         fil.write(bytearray("nchans", "ascii"))
@@ -192,7 +192,7 @@ def file_runthrough(data, outfile, d_type=1, channels=32):
 
 # datos para prueba
 vela_pulsar = Source(
-    "J0835–4510", 083520.6, -451034.8
+    "J08354510", 083520.6, -451034.8
 )  # creamos el objeto porque solo andamos mirando vela
 
 # pequeña sección de tiempo porque estoy 60% seguro que la fecha de modificación de
@@ -200,9 +200,9 @@ vela_pulsar = Source(
 # y un poco de inferencia
 from astropy.time import Time
 
-mjd1 = Time("2024-05-04 12:30").mjd[0]
-tst_fold04 = ObsParameter(2.048e6, mjd1, 400, vela_pulsar, "tstFold04.bin", 1)
+mjd1 = 60434 #Time("2024-05-04 12:30").mjd[0]
+tst_fold04 = ObsParameter(2.048e6, mjd1, 400+992e3, vela_pulsar, "tstFold04.bin", 1)
 tst_fold04.set_channels(32)
 tst_fold04.header_data()
 write_header(tst_fold04)
-file_runthrough(tst_fold04.file, "tst_fold04.fil")
+file_runthrough(tst_fold04.file, "tstFold04.fil")
