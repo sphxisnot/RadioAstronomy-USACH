@@ -1,6 +1,3 @@
-import os
-
-
 class Source(object):
     def __init__(self, name: str, right_ascension: float, declination: float):
         self.name = name
