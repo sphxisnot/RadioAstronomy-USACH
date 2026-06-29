@@ -2,15 +2,7 @@ import os
 import struct
 
 import numpy as np
-from sampling_qol import ObsParameter, Source
-
-# sanitizar input si es que se conserva esto (improbable si es que pasamos a C)
-# añadir inferencia de tipo más adelante?
-print("Elija una SDR:\n[1] RTL (8-bit unsigned int)\n[2] Airspy (16-bit signed int)")
-sdr_type = int(input("Ponga 1 o 2:"))
-# filesize = os.path.getsize(bin_file)
-# obs_len_secs = filesize / (2 * channels * sample_rate)
-# time_mjd = (os.path.getmtime(bin_file) / 864000) + 40587 - obs_len_secs / 864000
+from sampling_qol import ObsParameter
 
 
 # definición de funciones, hecho por modularidad y porque nos hará la vida un poco más facil si es que pasamos a C
@@ -30,7 +22,7 @@ def bin2cpow(data, off=0, d_type=1, channels=32):
     """
     data_type = {1: np.uint8, 2: np.int16}  # tipo de dato dependiendo de la sdr
     samples = np.fromfile(
-        data, dtype=data_type[d_type], sep="", count=channels * 2, offset=off
+        data, dtype=data_type[d_type], sep="", count=channels, offset=off
     )  # lectura de los datos, el separador es "empty" solo por precaución para que asuma binario, no sé si es
     # realmente necesario, quizá hacer offset un multiplicador a channel en vez de un número independiente
     freq_data = np.fft.fft(samples.astype(np.float64))  # transformada de Fourier
@@ -38,28 +30,7 @@ def bin2cpow(data, off=0, d_type=1, channels=32):
     return channel_pow
 
 
-def freq_transformation(file, chunksize):
-    samples = filesize / (
-        2 * channels
-    )  # la cantidad de muestras contenidas en el archivo
-    chunks = np.floor(
-        samples / chunksize
-    )  # la cantidad de trozos en los que dividiremos el proceso
-    overflow_chunk_size = samples - chunks * chunksize  # el trozo sobrante
-    for chunk in range(
-        chunks + 1
-    ):  # iteramos en todos los trozos (el +1 es para incluir el sobrante)
-        freq_data = np.empty([20, channels])
-        offset = 1  # tengo que cambiar esto
-        for power in range(20):
-            freq_data[power, :] = bin2cpow(file, off=offset * power, channels=channels)
-        freq = freq_data.sum(axis=0)  # suma los 20 power samples
-        # falta continuar el bucle
-        # en este momento no se me occure bien sobre qué tengo que iterar y cuantas veces, pero no es complicado
-    return freq
-
-
-def write_header(obsparams: ObsParameter):
+def write_header(obsparams: ObsParameter, is_presto=False):
     file = (
         str(obsparams.file).removesuffix(".iq").removesuffix(".bin")
     )  # me di cuenta que tengo que chequear si es bin o iq
@@ -83,7 +54,7 @@ def write_header(obsparams: ObsParameter):
         fil.write(struct.pack("<I", 5))
         fil.write(bytearray("nbits", "ascii"))
         fil.write(
-            struct.pack("<I", int(8 * sdr_type))
+            struct.pack("<I", int(8 * obsparams.sdr))
         )  # número de bits por muestra 8 para la rtl y 16 para la airspy
 
         fil.write(struct.pack("<I", 4))
@@ -92,7 +63,7 @@ def write_header(obsparams: ObsParameter):
 
         fil.write(struct.pack("<I", 4))
         fil.write(bytearray("fch1", "ascii"))  # frecuencia central del primer canal
-        fil.write(struct.pack("<d", obsparams.fch1))
+        fil.write(struct.pack("<d", obsparams.fch1 + int(is_presto) * 992e3))
 
         fil.write(struct.pack("<I", 6))
         fil.write(bytearray("nchans", "ascii"))
@@ -188,21 +159,3 @@ def file_runthrough(data, outfile, d_type=1, channels=32):
             )  # solo se usa la función paso3()
             offset = new_off
             sum_powers.astype(np.float32).tofile(fil)
-
-
-# datos para prueba
-vela_pulsar = Source(
-    "J0835–4510", 083520.6, -451034.8
-)  # creamos el objeto porque solo andamos mirando vela
-
-# pequeña sección de tiempo porque estoy 60% seguro que la fecha de modificación de
-# los archivos de drive será cuando los descargué, así que lo estoy haciendo a mano con el historial de drive
-# y un poco de inferencia
-from astropy.time import Time
-
-mjd1 = Time("2024-05-04 12:30").mjd[0]
-tst_fold04 = ObsParameter(2.048e6, mjd1, 400, vela_pulsar, "tstFold04.bin", 1)
-tst_fold04.set_channels(32)
-tst_fold04.header_data()
-write_header(tst_fold04)
-file_runthrough(tst_fold04.file, "tst_fold04.fil")
