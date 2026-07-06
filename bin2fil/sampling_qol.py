@@ -5,15 +5,20 @@ class Source(object):
         self.dec = declination
 
 
+VELA_PULSAR = Source(
+    "J08354510", 083520.6, -451034.8
+)  # creamos el objeto porque solo andamos mirando vela
+
+
 class ObsParameter(object):
     def __init__(
         self,
         sample_rate: float,
         obstime: float,
         center_frequency: float,
-        source: Source,
         rawfile: str,
         sdr: int,
+        source: Source = VELA_PULSAR,
     ):
         self.sample_rate = sample_rate
         self.obstime = obstime
@@ -39,6 +44,17 @@ class ObsParameter(object):
             print(
                 "No se ha especificado la cantidad de canales, defínala e intente de nuevo."
             )
+
+
+def load_data(file):
+    with open(file) as data:
+        data.readline()
+        lines = []
+        for i in range(3):
+            lines.append(float(data.readline().rstrip("\n").split(",")[-1]))
+        lines.append(data.readline().rstrip("\n").split(",")[-1])
+        lines.append(int(data.readline().rstrip("\n").split(",")[-1]) // 8)
+    return ObsParameter(*lines)
 
 
 def take_samples():
