@@ -1,3 +1,8 @@
+import time
+
+from rtlsdr import RtlSdr
+
+
 class Source(object):
     def __init__(self, name: str, right_ascension: float, declination: float):
         self.name = name
@@ -57,5 +62,21 @@ def load_data(file):
     return ObsParameter(*lines)
 
 
-def take_samples():
+def write_obs_data(outfile, sample_rate, time, tuned_freq, datafile, data_type):
+    with open(outfile, "+w") as params:
+        params.write("Name [Unit], Value")
+        params.write(f"Sample Rate [Samples/Second], {sample_rate}")
+        params.write(f"Obs Time [MJD], {time}")
+        params.write(f"Tuned Frequency [Mhz], {tuned_freq * 1e-6}")
+        params.write(f"Raw Data File, {datafile}")
+        params.write(f"Data Type [bits], {data_type}")
+
+
+def take_samples(sample_rate, tuned_frequency, integration_time):
+    sdr = RtlSdr()
+    sdr.sample_rate = sample_rate
+    sdr.fc = tuned_frequency
+    obstime = time.time() // (3600 * 24) + 40587
+    obssamples = sample_rate * integration_time
+    sdr.read_samples(obssamples)
     pass
