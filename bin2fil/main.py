@@ -59,7 +59,9 @@ def write_header(obsparams: ObsParameter, is_presto=False):
 
         fil.write(struct.pack("<I", 4))
         fil.write(bytearray("foff", "ascii"))
-        fil.write(struct.pack("<d", obsparams.channel_width))  # ancho de cada canal
+        fil.write(
+            struct.pack("<d", obsparams.channel_width * 1e-6)
+        )  # ancho de cada canal
 
         fil.write(struct.pack("<I", 4))
         fil.write(bytearray("fch1", "ascii"))  # frecuencia central del primer canal

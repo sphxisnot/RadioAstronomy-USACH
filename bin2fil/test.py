@@ -16,5 +16,5 @@ file_runthrough(tst_fold04.file, "tstFold04.fil")
 
 outfilterbank = FilReader("tstFold04.fil")  # lee el filterbank
 print(
-    outfilterbank.header.fch1
+    outfilterbank.header
 )  # esto solo printea el fch1 (la frecuencia central del primer canal)
