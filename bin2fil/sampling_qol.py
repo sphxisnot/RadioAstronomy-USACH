@@ -1,7 +1,5 @@
 import time
-
-from rtlsdr import RtlSdr
-
+import subprocess
 
 class Source(object):
     def __init__(self, name: str, right_ascension: float, declination: float):
@@ -52,17 +50,20 @@ class ObsParameter(object):
 
 
 def load_data(file):
-    with open(file) as data:
+    with open(file,"r") as data:
         data.readline()
         lines = []
         for i in range(3):
             lines.append(float(data.readline().rstrip("\n").split(",")[-1]))
         lines.append(data.readline().rstrip("\n").split(",")[-1])
         lines.append(int(data.readline().rstrip("\n").split(",")[-1]) // 8)
+        source=data.readline().rstrip("\n").split(",")[1:4]
+        pulsar=Source(source[0],float(source[1]),float(source[2]))
+        lines.append(pulsar)
     return ObsParameter(*lines)
 
 
-def write_obs_data(outfile, sample_rate, time, tuned_freq, datafile, data_type):
+def write_obs_data(outfile, sample_rate, time, tuned_freq, datafile, data_type,source):
     with open(outfile, "+w") as params:
         params.write("Name [Unit], Value")
         params.write(f"Sample Rate [Samples/Second], {sample_rate}")
@@ -70,13 +71,15 @@ def write_obs_data(outfile, sample_rate, time, tuned_freq, datafile, data_type):
         params.write(f"Tuned Frequency [Mhz], {tuned_freq * 1e-6}")
         params.write(f"Raw Data File, {datafile}")
         params.write(f"Data Type [bits], {data_type}")
+        params.write(f"Source, {source}")
 
+def live_sampling(sample_rate,tuned_frequency,integration_time,outfile):
+    num_samples= integration_time*sample_rate
+    cli_command = f"airspy_rx -r {outfile}.bin -a {sample_rate} -f {tuned_frequency} -n {num_samples}"
+    subprocess.run(cli_command)
 
-def take_samples(sample_rate, tuned_frequency, integration_time):
-    sdr = RtlSdr()
-    sdr.sample_rate = sample_rate
-    sdr.fc = tuned_frequency
-    obstime = time.time() // (3600 * 24) + 40587
-    obssamples = sample_rate * integration_time
-    sdr.read_samples(obssamples)
-    pass
+def listen_from_file(obsfile):
+    with open(obsfile,"r+") as file:
+        file.readline()
+        obsparams=[]
+    live_sampling(*obsparams)
