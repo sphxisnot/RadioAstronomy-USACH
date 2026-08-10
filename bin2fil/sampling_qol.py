@@ -14,7 +14,7 @@ VELA_PULSAR = Source(
 
 
 class ObsParameter(object):
-    def __init__(
+    def __init__( 
         self,
         sample_rate: float,
         obstime: float,
