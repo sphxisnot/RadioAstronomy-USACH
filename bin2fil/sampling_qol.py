@@ -14,7 +14,7 @@ VELA_PULSAR = Source(
 
 
 class ObsParameter(object):
-    def __init__( 
+    def __init__(
         self,
         sample_rate: float,
         obstime: float,
@@ -29,7 +29,6 @@ class ObsParameter(object):
         self.ra = source.ra
         self.dec = source.dec
         self.cfreq = center_frequency
-        self.tsample = (1 / self.sample_rate) * 32 * 20 # 32 canales y 20 muestras calculadas en el paso 3 de la canalización de Hawkrao
         self.file = rawfile
         self.sdr = sdr
 
@@ -42,6 +41,7 @@ class ObsParameter(object):
             self.fch1 = (
                 self.cfreq + (self.sample_rate / 2.0) * 1e-6 + (self.channel_width * 0.5)
             )
+            self.tsample = (1 / self.sample_rate) * self.channels * 20 # 32 canales y 20 muestras calculadas en el paso 3 de la canalización de Hawkrao
 
         except NameError:
             print(
