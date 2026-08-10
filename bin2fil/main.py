@@ -54,7 +54,7 @@ def write_header(obsparams: ObsParameter, is_presto=False):
         fil.write(struct.pack("<I", 5))
         fil.write(bytearray("nbits", "ascii"))
         fil.write(
-            struct.pack("<I", int(8 * obsparams.sdr))
+            struct.pack("<I", 32) #int(8 * obsparams.sdr))
         )  # número de bits por muestra 8 para la rtl y 16 para la airspy
 
         fil.write(struct.pack("<I", 4))
