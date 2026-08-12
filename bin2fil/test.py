@@ -1,4 +1,5 @@
 from main import file_runthrough, write_header
+from convertidor import convert_and_write
 from sampling_qol import load_data
 from sigpyproc.readers import FilReader
 
@@ -12,7 +13,7 @@ tst_fold04 = load_data("tstFold04.params")
 tst_fold04.set_channels(32)
 tst_fold04.header_data()
 write_header(tst_fold04)
-file_runthrough(tst_fold04.file, "tstFold04.fil")
+convert_and_write(tst_fold04.file, "tstFold04.fil",tst_fold04.sample_rate,tst_fold04.channels)
 
 outfilterbank = FilReader("tstFold04.fil")  # lee el filterbank
 print(

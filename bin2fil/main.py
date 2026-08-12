@@ -30,7 +30,7 @@ def bin2cpow(data, off=0, d_type=1, channels=32):
     return channel_pow
 
 
-def write_header(obsparams: ObsParameter, is_presto=False):
+def write_header(obsparams: ObsParameter):
     file = (
         str(obsparams.file).removesuffix(".iq").removesuffix(".bin")
     )  # me di cuenta que tengo que chequear si es bin o iq
@@ -65,7 +65,7 @@ def write_header(obsparams: ObsParameter, is_presto=False):
 
         fil.write(struct.pack("<I", 4))
         fil.write(bytearray("fch1", "ascii"))  # frecuencia central del primer canal
-        fil.write(struct.pack("<d", obsparams.fch1 + int(is_presto) * 992e3))
+        fil.write(struct.pack("<d", obsparams.fch1))
 
         fil.write(struct.pack("<I", 6))
         fil.write(bytearray("nchans", "ascii"))
