@@ -60,7 +60,7 @@ def write_header(obsparams: ObsParameter):
         fil.write(struct.pack("<I", 4))
         fil.write(bytearray("foff", "ascii"))
         fil.write(
-            struct.pack("<d", obsparams.channel_width * 1e-6)
+            struct.pack("<d", obsparams.channel_width)
         )  # ancho de cada canal
 
         fil.write(struct.pack("<I", 4))
