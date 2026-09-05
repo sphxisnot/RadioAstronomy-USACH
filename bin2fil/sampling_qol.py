@@ -38,9 +38,9 @@ class ObsParameter(object):
         self.pw50 = pw50
         self.delay = self.dm*8.3e3*sample_rate*1e-3/(self.cfreq**3)
         self.channels = int(np.pow(2,np.ceil(np.log2((4*self.delay)/self.pw50))))
-        self.channel_width = (self.sample_rate / self.channels) * 1e-6
+        self.channel_width = -(self.sample_rate / self.channels) * 1e-6
         self.fch1 = (
-            self.cfreq - (self.sample_rate *0.5) * 1e-6 + (self.channel_width * 0.5)
+            self.cfreq + (self.sample_rate *0.5) * 1e-6 + (self.channel_width * 0.5)
         )
         self.tsample = (1 / self.sample_rate) * self.channels * 20
 
