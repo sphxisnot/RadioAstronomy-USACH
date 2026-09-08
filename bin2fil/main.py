@@ -31,10 +31,8 @@ def bin2cpow(data, off=0, d_type=1, channels=32):
 
 
 def write_header(obsparams: ObsParameter):
-    file = (
-        str(obsparams.file).removesuffix(".iq").removesuffix(".bin")
-    )  # me di cuenta que tengo que chequear si es bin o iq
-    outfile = file + ".fil"
+      # me di cuenta que tengo que chequear si es bin o iq
+    outfile = obsparams.outfile
     with open(outfile, "wb") as fil:
         fil.write(struct.pack("<I", 12))
         fil.write(bytearray("HEADER_START", "ascii"))

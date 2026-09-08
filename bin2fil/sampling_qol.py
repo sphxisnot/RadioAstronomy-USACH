@@ -1,6 +1,7 @@
 import time
 import subprocess
 import numpy as np
+import glob
 
 class Source(object):
     def __init__(self, name: str, right_ascension: float, declination: float):
@@ -32,17 +33,18 @@ class ObsParameter(object):
         self.ra = source.ra
         self.dec = source.dec
         self.cfreq = center_frequency
-        self.file = rawfile
+        self.file = glob.glob("**/"+rawfile,recursive=True)[0]
         self.sdr = sdr
         self.dm = dm
         self.pw50 = pw50
         self.delay = self.dm*8.3e3*sample_rate*1e-3/(self.cfreq**3)
-        self.channels = int(np.pow(2,np.ceil(np.log2((4*self.delay)/self.pw50))))
+        self.channels = int(np.max([np.pow(2,np.ceil(np.log2((4*self.delay)/self.pw50))),32]))
         self.channel_width = -(self.sample_rate / self.channels) * 1e-6
         self.fch1 = (
             self.cfreq + (self.sample_rate *0.5) * 1e-6 + (self.channel_width * 0.5)
         )
         self.tsample = (1 / self.sample_rate) * self.channels * 20
+        self.outfile = str(rawfile).removesuffix(".iq").removesuffix(".bin")+".fil"
 
 
 def load_data(file):
@@ -51,7 +53,7 @@ def load_data(file):
         lines = []
         for i in range(5):
             lines.append(float(data.readline().rstrip("\n").split(",")[-1]))
-        lines.append(int(data.readline().rstrip("\n").split(",")[-1]) // 8)
+        lines.append(int(data.readline().rstrip("\n").split(",")[-1]))
         lines.append(data.readline().rstrip("\n").split(",")[-1])
         source=data.readline().rstrip("\n").split(",")[1:4]
         pulsar=Source(source[0],float(source[1]),float(source[2]))
