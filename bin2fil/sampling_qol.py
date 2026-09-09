@@ -1,5 +1,7 @@
 import time
 import subprocess
+import numpy as np
+import glob
 
 class Source(object):
     def __init__(self, name: str, right_ascension: float, declination: float):
@@ -14,14 +16,16 @@ VELA_PULSAR = Source(
 
 
 class ObsParameter(object):
-    def __init__( 
+    def __init__(
         self,
         sample_rate: float,
         obstime: float,
         center_frequency: float,
-        rawfile: str,
+        dm: float,
+        pw50: float,
         sdr: int,
-        source: Source = VELA_PULSAR,
+        rawfile: str,
+        source: Source = VELA_PULSAR
     ):
         self.sample_rate = sample_rate
         self.obstime = obstime
@@ -29,34 +33,28 @@ class ObsParameter(object):
         self.ra = source.ra
         self.dec = source.dec
         self.cfreq = center_frequency
-        self.file = rawfile
+        self.file = glob.glob("**/"+rawfile,recursive=True)[0]
         self.sdr = sdr
-
-    def set_channels(self, channels):
-        self.channels = channels
-
-    def header_data(self):
-        try:
-            self.channel_width = -(self.sample_rate / self.channels) * 1e-6
-            self.fch1 = (
-                self.cfreq + (self.sample_rate / 2.0) * 1e-6 + (self.channel_width * 0.5)
-            )
-            self.tsample = (1 / self.sample_rate) * self.channels * 20 # 32 canales y 20 muestras calculadas en el paso 3 de la canalización de Hawkrao
-
-        except NameError:
-            print(
-                "No se ha especificado la cantidad de canales, defínala e intente de nuevo."
-            )
+        self.dm = dm
+        self.pw50 = pw50
+        self.delay = self.dm*8.3e3*sample_rate*1e-3/(self.cfreq**3)
+        self.channels = int(np.max([np.pow(2,np.ceil(np.log2((4*self.delay)/self.pw50))),32]))
+        self.channel_width = -(self.sample_rate / self.channels) * 1e-6
+        self.fch1 = (
+            self.cfreq + (self.sample_rate *0.5) * 1e-6 + (self.channel_width * 0.5)
+        )
+        self.tsample = (1 / self.sample_rate) * self.channels * 20
+        self.outfile = str(rawfile).removesuffix(".iq").removesuffix(".bin")+".fil"
 
 
 def load_data(file):
     with open(file,"r") as data:
         data.readline()
         lines = []
-        for i in range(3):
+        for i in range(5):
             lines.append(float(data.readline().rstrip("\n").split(",")[-1]))
+        lines.append(int(data.readline().rstrip("\n").split(",")[-1]))
         lines.append(data.readline().rstrip("\n").split(",")[-1])
-        lines.append(int(data.readline().rstrip("\n").split(",")[-1]) // 8)
         source=data.readline().rstrip("\n").split(",")[1:4]
         pulsar=Source(source[0],float(source[1]),float(source[2]))
         lines.append(pulsar)

@@ -20,6 +20,7 @@ La ganancia viene de:
 Esto ya deja el conversor rapido en Python puro; la Tarea 7
 (reescritura en C) seguiria siendo relevante solo si esto se sigue demorando.
 """
+from sampling_qol import ObsParameter
 import numpy as np
 
 
@@ -64,29 +65,30 @@ def _iter_power_batches(raw, n_groups_total, samples_per_group, channels, group_
 
 
 def convert_iq_to_filterbank_power(
-    input_path,
-    sample_rate,
-    channels=32,
+    obsparams: ObsParameter,
+#    input_path,
+#    sample_rate,
+#    channels=32,
     group_chunks=20,
-    dtype_bits=8,
+#    dtype_bits=8,
     batch_groups=5000,
 ):
     """
     Convierte un archivo I/Q crudo completo en un array 2D de poder por
     canal (tiempo x canal), vectorizada y por batches.
     """
-    np_dtype = np.uint8 if dtype_bits == 8 else np.int16
+    np_dtype = np.uint8 if obsparams.sdr == 8 else np.int16
 
-    raw = np.memmap(input_path, dtype=np_dtype, mode="r")
+    raw = np.memmap(obsparams.file, dtype=np_dtype, mode="r")
     n_complex_total = raw.shape[0] // 2
 
     samples_per_group, n_groups_total, tsamp_integrated = _batch_geometry(
-        n_complex_total, sample_rate, channels, group_chunks
+        n_complex_total, obsparams.sample_rate, obsparams.channels, group_chunks
     )
 
-    power = np.empty((n_groups_total, channels), dtype=np.float32)
+    power = np.empty((n_groups_total, obsparams.channels), dtype=np.float32)
     for idx, integrated in _iter_power_batches(
-        raw, n_groups_total, samples_per_group, channels, group_chunks, dtype_bits, batch_groups
+        raw, n_groups_total, samples_per_group, obsparams.channels, group_chunks, obsparams.sdr, batch_groups
     ):
         power[idx:idx + integrated.shape[0]] = integrated
 
@@ -103,27 +105,28 @@ def write_filterbank_body(power, outfile_path, mode="ab"):
 
 
 def convert_and_write(
-    input_path,
-    outfile_path,
-    sample_rate,
-    channels=32,
+    obsparams:ObsParameter,
+    #input_path,
+    #outfile_path,
+    #sample_rate,
+    #channels=32,
     group_chunks=20,
-    dtype_bits=8,
+    #dtype_bits=8,
     batch_groups=5000,
 ):
-    np_dtype = np.uint8 if dtype_bits == 8 else np.int16
+    np_dtype = np.uint8 if obsparams.sdr == 8 else np.int16
 
-    raw = np.memmap(input_path, dtype=np_dtype, mode="r")
+    raw = np.memmap(obsparams.file, dtype=np_dtype, mode="r")
     n_complex_total = raw.shape[0] // 2
 
     samples_per_group, n_groups_total, tsamp_integrated = _batch_geometry(
-        n_complex_total, sample_rate, channels, group_chunks
+        n_complex_total, obsparams.sample_rate, obsparams.channels, group_chunks
     )
 
     n_rows_written = 0
-    with open(outfile_path, "ab") as fil:
+    with open(obsparams.outfile, "ab") as fil:
         for idx, integrated in _iter_power_batches(
-            raw, n_groups_total, samples_per_group, channels, group_chunks, dtype_bits, batch_groups
+            raw, n_groups_total, samples_per_group, obsparams.channels, group_chunks, obsparams.sdr, batch_groups
         ):
             integrated.tofile(fil)
             n_rows_written += integrated.shape[0]
